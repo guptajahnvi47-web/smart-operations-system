@@ -14,7 +14,8 @@ const Signup = () => {
       await signup(formData.name, formData.email, formData.password, formData.role);
       navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.message || 'Signup failed');
+      console.error('Signup Error details:', err);
+      setError(err.response?.data?.message || err.message || 'Signup failed');
     }
   };
 
