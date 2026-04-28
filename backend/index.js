@@ -1,13 +1,10 @@
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
-import path from "path";
 import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import taskRoutes from "./routes/taskRoutes.js";
 import { notFound, errorHandler } from "./middleware/errorMiddleware.js";
-
-import { fileURLToPath } from 'url';
 
 dotenv.config();
 connectDB();
@@ -15,10 +12,7 @@ connectDB();
 const app = express();
 
 // Configure CORS
-app.use(cors({
-  origin: ['https://smart-operations-system-qd4i.onrender.com', 'http://localhost:5173'],
-  credentials: true
-}));
+app.use(cors({ origin: "*" }));
 
 app.use(express.json());
 
@@ -26,14 +20,9 @@ app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/tasks", taskRoutes);
 
-// 👇 SERVE FRONTEND (IMPORTANT)
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-app.use(express.static(path.join(__dirname, "../frontend/dist")));
-
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "../frontend/dist/index.html"));
+// Root route
+app.get("/", (req, res) => {
+  res.send("Backend is running 🚀");
 });
 
 // 👇 ERROR HANDLERS (MUST BE LAST)

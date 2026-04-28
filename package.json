@@ -1,10 +1,9 @@
 {
-  "name": "smart-operations-system",
+  "name": "smart-operations-system-backend",
   "version": "1.0.0",
   "type": "module",
   "main": "backend/index.js",
   "scripts": {
-    "build": "cd frontend && npm install && npm run build",
     "start": "node backend/index.js"
   },
   "dependencies": {
