@@ -4,6 +4,7 @@
   "type": "module",
   "main": "backend/index.js",
   "scripts": {
+    "build": "cd frontend && npm install && npm run build",
     "start": "node backend/index.js"
   },
   "dependencies": {
