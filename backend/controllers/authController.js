@@ -70,3 +70,15 @@ export const loginUser = async (req, res, next) => {
     next(error);
   }
 };
+
+// @desc    Get all users
+// @route   GET /api/auth/users
+// @access  Private/Admin,Manager
+export const getUsers = async (req, res, next) => {
+  try {
+    const users = await User.find({}).select('-password');
+    res.json(users);
+  } catch (error) {
+    next(error);
+  }
+};

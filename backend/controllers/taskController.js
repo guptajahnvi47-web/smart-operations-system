@@ -107,3 +107,25 @@ export const deleteTask = async (req, res, next) => {
     next(error);
   }
 };
+
+// @desc    Get workload insights
+// @route   GET /api/tasks/workload
+// @access  Private/Admin,Manager
+export const getWorkload = async (req, res, next) => {
+  try {
+    const workload = await Task.aggregate([
+      { $match: { status: { $in: ['todo', 'in-progress'] } } },
+      { $group: { _id: '$assignedTo', activeTasks: { $sum: 1 } } }
+    ]);
+    
+    // Map array to object: { userId: activeTasks }
+    const workloadMap = {};
+    workload.forEach(item => {
+      workloadMap[item._id] = item.activeTasks;
+    });
+    
+    res.json(workloadMap);
+  } catch (error) {
+    next(error);
+  }
+};

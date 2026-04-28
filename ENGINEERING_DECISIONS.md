@@ -1,27 +1,52 @@
 # Engineering Decision Document
+**Project:** Smart Internal Operations System
 
 ## 1. System Architecture
-The application uses a strict **Layered Architecture** on the backend:
-- **Routes:** Define the API endpoints and attach middleware.
-- **Controllers:** Handle HTTP request/response logic and extract payload data.
-- **Services:** Isolate core business logic. For instance, `LogService` handles the automated creation of activity logs. This prevents controllers from becoming bloated.
-- **Models:** Mongoose schemas that define the data layer structure and constraints.
+The application uses a strict **Layered Architecture** within a Node.js/React environment:
+- **Presentation Layer (React):** A dynamic SPA using React Router for navigation, Context API for state management, and a custom CSS variable-driven Design System for a premium aesthetic (glassmorphism, dark mode).
+- **Routing Layer (Express):** Defines the REST API endpoints and enforces authentication (`protect`) and authorization (`authorizeRoles`) middlewares.
+- **Controller Layer:** Extracts payload data, handles business rules, and returns standardized JSON responses.
+- **Service Layer:** Isolates reusable core business logic (e.g., `LogService.logAction`) to prevent controller bloat and ensure consistency.
+- **Data Access Layer (Mongoose):** Defines strict schemas and constraints for MongoDB.
 
 ## 2. Database Design (MongoDB)
-- **MongoDB/Mongoose** was chosen because its schema-less nature allows for rapid iteration and it scales well with document-oriented data like Tasks and generic Activity Logs.
-- **Relational Integrity:** We rely on `ObjectId` references (e.g., `assignedTo` and `createdBy` in the Task model linking to the User model).
+MongoDB was chosen for its flexibility with document-oriented data. The schema relies on `ObjectId` references for relational integrity:
+- **User Entity:** Stores authentication credentials (`bcryptjs` hashed) and role definition (`admin`, `manager`, `user`).
+- **Task Entity:** Represents the core operational unit. Links to `assignedTo` (User) and `createdBy` (User). Includes status, priority, and `dueDate`.
+- **ActivityLog Entity:** A generic logging schema that tracks the `actor` (User), `action` string, `entityId`, and arbitrary JSON `metadata` for complete audit trails.
 
 ## 3. Key Technical Decisions
-- **Authentication:** JWT is used because it is stateless, making the backend horizontally scalable. `bcryptjs` is used to hash passwords securely before saving them to the DB.
-- **Role-Based Access Control (RBAC):** Implemented as an Express middleware (`authorizeRoles`) which cleanly abstracts permission checks away from controller logic.
-- **Mandatory Feature (Activity Logging):** A `LogService` was created. Whenever a controller mutates state (e.g., creating a task or changing a status), it invokes `LogService.logAction()`. This clearly demonstrates accountability tracking while maintaining Separation of Concerns.
-- **Frontend Styling:** Vanilla CSS was used with a CSS Variables (Tokens) based Design System. This avoids the overhead of Tailwind for small-scale projects while ensuring a premium, unified aesthetic (glassmorphism, consistent spacing/radius).
+- **Authentication:** Selected **JWT (JSON Web Tokens)** because it is stateless, enabling the backend to be horizontally scaled without sticky sessions or centralized session stores.
+- **Role-Based Access Control (RBAC):** Built a flexible Express middleware (`authorizeRoles`) that intercepts requests before they hit controllers. This guarantees standard users cannot perform destructive actions (like `DELETE /tasks`).
+- **Frontend Styling:** Opted for **Vanilla CSS** with CSS Variables over Tailwind. This decision prioritized maximum customizability for implementing advanced aesthetics (backdrop filters, custom hover shadows) without polluting JSX with utility classes.
 
 ## 4. Trade-offs
-- **State Management:** React's Context API was used instead of Redux. Context is sufficient for global states like `User Auth` in this scope, reducing boilerplate.
-- **Soft Deletes:** Tasks are hard-deleted. For a full enterprise system, soft-deletes (e.g., an `isDeleted` flag) would be preferred to maintain absolute audit integrity.
+- **State Management:** Used React's Context API instead of Redux. *Trade-off:* Context is simpler and reduces boilerplate, but it can cause unnecessary re-renders if the state tree grows massive. For this scale, it is optimal.
+- **Data Deletion:** Tasks are currently hard-deleted. *Trade-off:* Saves storage space and simplifies queries, but ruins historical audit trails. In a true enterprise system, soft-deletes (an `isDeleted` flag) would be mandatory.
 
-## 5. Scaling Strategy (Handling 10,000+ Users)
-- **Database:** Add indexes to heavily queried fields (`Task.assignedTo`, `ActivityLog.createdAt`). Use MongoDB Atlas for automated sharding and replication.
-- **Backend:** Run Express in a cluster mode or deploy as containerized microservices (Docker/Kubernetes) behind a load balancer (Nginx/AWS ALB).
-- **Caching:** Implement Redis to cache frequent, read-heavy queries like fetching the Dashboard task statistics.
+## 5. Scaling Strategy (10,000+ Users)
+If the system grows to 10,000+ concurrent users, the following bottlenecks will emerge:
+- **What will break first?** The MongoDB connection pool and the CPU utilization of the single Node.js thread, specifically when executing complex queries like the aggregation pipeline for `Smart Workload Insights`.
+- **How I would improve it:**
+  1. **Database:** Implement heavy indexing on frequently queried fields (`assignedTo`, `status`, `createdAt`). Use MongoDB Atlas for automated sharding across distributed clusters.
+  2. **Application Layer:** Deploy the Express backend as containerized microservices via Kubernetes, sitting behind an Application Load Balancer.
+  3. **Caching:** Introduce Redis to cache read-heavy endpoints (e.g., Dashboard statistics) to drastically reduce database hits.
+
+## 6. Future Improvements
+👉 *"If you had 2 more days, what would you improve?"*
+1. **Real-time Collaboration:** I would implement WebSockets (Socket.io) so that task status updates and new assignments reflect on users' screens instantly without a manual refresh.
+2. **Task Comments & File Attachments:** A sub-document schema to allow users to discuss tasks directly within the card, and AWS S3 integration for attaching operational documents.
+3. **Advanced Analytics:** A dedicated reporting dashboard for Admins to view historical efficiency trends (e.g., average time to complete tasks per user).
+
+---
+
+## Scope Decision & Mandatory Creativity Requirement
+### What was Built
+I built a complete end-to-end task management lifecycle. Managers can assign tasks, Users can log in to view their specific queue, update statuses, and view due dates. The system tracks these actions invisibly via the `LogService`.
+
+### What was Intentionally Not Built
+I intentionally omitted "Email Notifications" and "Password Resets". While crucial for a production launch, they require third-party integrations (SendGrid, Twilio) that distract from demonstrating core architectural competence in this exercise.
+
+### Invented Feature: Smart Workload Insights
+- **Why I added it:** Task management tools often fail because managers assign work blindly, leading to team burnout or bottlenecks.
+- **What problem it solves:** When a manager creates a task, the UI now queries a dedicated `GET /api/tasks/workload` endpoint. It dynamically alerts the manager if the selected user is currently overloaded (e.g., has 5 or more active tasks). This prevents unbalanced work delegation and improves overall operational efficiency.

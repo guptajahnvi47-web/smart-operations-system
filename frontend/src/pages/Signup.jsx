@@ -12,7 +12,7 @@ const Signup = () => {
     e.preventDefault();
     try {
       await signup(formData.name, formData.email, formData.password, formData.role);
-      navigate('/');
+      navigate('/dashboard');
     } catch (err) {
       setError(err.response?.data?.message || 'Signup failed');
     }
