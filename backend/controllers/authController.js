@@ -46,15 +46,22 @@ export const signupUser = async (req, res, next) => {
 // @desc    Auth user & get token
 // @route   POST /api/auth/login
 // @access  Public
+// @desc    Auth user & get token
+// @route   POST /api/auth/login
+// @access  Public
 export const loginUser = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
     const user = await User.findOne({ email });
 
+    // Using your custom matchPassword method on the User model
     if (user && (await user.matchPassword(password))) {
+
+      // (Optional) Log the login action if you kept the LogService
       await LogService.logAction(user._id, 'USER_LOGGED_IN', null, { email: user.email });
 
+      // RETURN THE FULL USER OBJECT, NOT JUST THE TOKEN!
       res.json({
         _id: user._id,
         name: user.name,
@@ -70,6 +77,7 @@ export const loginUser = async (req, res, next) => {
     next(error);
   }
 };
+
 
 // @desc    Get all users
 // @route   GET /api/auth/users
