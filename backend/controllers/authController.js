@@ -7,13 +7,14 @@ import LogService from '../services/logService.js';
 // @access  Public
 export const signupUser = async (req, res, next) => {
   try {
+    console.log("Signup API hit. Request body:", req.body);
     const { name, email, password, role } = req.body;
 
     const userExists = await User.findOne({ email });
 
     if (userExists) {
-      res.status(400);
-      throw new Error('User already exists');
+      console.error("Signup Error: User already exists");
+      return res.status(400).json({ message: 'User already exists' });
     }
 
     const user = await User.create({
@@ -24,7 +25,6 @@ export const signupUser = async (req, res, next) => {
     });
 
     if (user) {
-      // Log the action (though technically no active user session, we can log the newly created user as the actor)
       await LogService.logAction(user._id, 'USER_CREATED', null, { email: user.email });
 
       res.status(201).json({
@@ -35,29 +35,34 @@ export const signupUser = async (req, res, next) => {
         token: generateToken(user._id),
       });
     } else {
-      res.status(400);
-      throw new Error('Invalid user data');
+      console.error("Signup Error: Invalid user data received");
+      return res.status(400).json({ message: 'Invalid user data' });
     }
   } catch (error) {
-    next(error);
+    console.error("Signup Catch Error:", error);
+    res.status(500).json({ message: "Server error during signup" });
   }
 };
 
 // @desc    Auth user & get token
 // @route   POST /api/auth/login
 // @access  Public
-// @desc    Auth user & get token
-// @route   POST /api/auth/login
-// @access  Public
 export const loginUser = async (req, res, next) => {
   try {
+    console.log("Login API hit. Request body:", req.body);
     const { email, password } = req.body;
 
     const user = await User.findOne({ email });
 
-    // Using your custom matchPassword method on the User model
-    if (user && (await user.matchPassword(password))) {
+    if (!user) {
+      console.error("Login Error: User not found");
+      return res.status(400).json({ message: "User not found" });
+    }
 
+    // Using your custom matchPassword method on the User model
+    const isMatch = await user.matchPassword(password);
+
+    if (isMatch) {
       // (Optional) Log the login action if you kept the LogService
       await LogService.logAction(user._id, 'USER_LOGGED_IN', null, { email: user.email });
 
@@ -70,11 +75,12 @@ export const loginUser = async (req, res, next) => {
         token: generateToken(user._id),
       });
     } else {
-      res.status(401);
-      throw new Error('Invalid email or password');
+      console.error("Login Error: Invalid password");
+      return res.status(400).json({ message: "Invalid email or password" });
     }
   } catch (error) {
-    next(error);
+    console.error("Login Catch Error:", error);
+    res.status(500).json({ message: "Server error during login" });
   }
 };
 
